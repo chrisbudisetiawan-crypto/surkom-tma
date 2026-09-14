@@ -301,48 +301,177 @@
     }
 
     function renderHistoryList(items) {
-      const container = document.getElementById("historyListContainer");
-      document.getElementById("historyCountBadge").innerText = `${items.length} Data`;
-      container.innerHTML = "";
+  const container = document.getElementById("historyListContainer");
+  document.getElementById("historyCountBadge").innerText = `${items.length} Data`;
+  container.innerHTML = "";
 
-      if (items.length === 0) {
-        container.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">Belum ada riwayat surat komunikasi.</div>`;
-        return;
-      }
+  if (items.length === 0) {
+    container.innerHTML = `<div class="text-center py-8 text-xs text-slate-400">Belum ada riwayat surat komunikasi.</div>`;
+    return;
+  }
 
-      items.forEach(item => {
-        let statusBadge = "bg-amber-500/20 text-amber-300 border-amber-500/30";
-        if (item.status === "DONE") statusBadge = "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
-        if (item.status === "IN_PROGRESS") statusBadge = "bg-sky-500/20 text-sky-300 border-sky-500/30";
+  items.forEach(item => {
+    let statusBadge = "bg-amber-50 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-500/30";
+    if (item.status === "DONE") statusBadge = "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-500/30";
+    if (item.status === "IN_PROGRESS") statusBadge = "bg-sky-50 dark:bg-sky-500/20 text-sky-700 dark:text-sky-300 border-sky-200 dark:border-sky-500/30";
 
-        const card = document.createElement("div");
-        card.className = "bg-slate-800/60 border border-slate-700 rounded-xl p-3.5 space-y-2";
-        card.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-sky-400 font-mono">${escapeHtml(item.number)}</span>
-            <span class="text-[10px] border px-2 py-0.5 rounded font-medium ${statusBadge}">${item.status}</span>
-          </div>
-          <div>
-            <div class="text-xs font-semibold text-white">${escapeHtml(item.subject)}</div>
-            <div class="text-[11px] text-slate-400 mt-0.5 line-clamp-2">${escapeHtml(item.description)}</div>
-          </div>
-          <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-700/50 flex items-center justify-between">
-            <span>PIC: <b>${escapeHtml(item.picName)}</b> (${escapeHtml(item.destinationDept)})</span>
-            <span>${item.date}</span>
-          </div>
-          ${item.docUrl ? `
-            <div class="pt-1">
-              <a href="${item.docUrl}" target="_blank" class="text-[11px] text-sky-400 hover:underline inline-flex items-center space-x-1">
-                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                <span>Buka Dokumen Digital</span>
-              </a>
-            </div>
-          ` : ""}
-        `;
-        container.appendChild(card);
-      });
+    const card = document.createElement("div");
+    card.className = "bg-white dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-xl p-3.5 space-y-2.5 shadow-sm transition-colors";
+    
+    // Blok Tombol Aksi Berdasarkan Peran & Status
+    let actionButtons = "";
+    
+    // 1. Aksi Approval untuk Supervisor/Superadmin jika status masih PENDING
+    if (item.approvalStatus === "PENDING") {
+      actionButtons += `
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex space-x-2">
+          <button onclick="approveSurkom('${item.id}')" class="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-semibold py-1.5 rounded-lg transition active:scale-95 flex items-center justify-center space-x-1">
+            <i class="fa-solid fa-check"></i>
+            <span>Setujui (ACC)</span>
+          </button>
+        </div>
+      `;
+    }
+    // 2. Aksi Terima untuk PIC jika status sudah WAITING
+    else if (item.status === "WAITING") {
+      actionButtons += `
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex space-x-2">
+          <button onclick="receiveSurkom('${item.id}')" class="flex-1 bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-semibold py-1.5 rounded-lg transition active:scale-95 flex items-center justify-center space-x-1">
+            <i class="fa-solid fa-hand-holding-hand"></i>
+            <span>Terima Tugas (PIC)</span>
+          </button>
+        </div>
+      `;
+    }
+    // 3. Aksi Selesaikan untuk PIC jika status IN_PROGRESS
+    else if (item.status === "IN_PROGRESS") {
+      actionButtons += `
+        <div class="pt-2 border-t border-slate-100 dark:border-slate-700/60 flex space-x-2">
+          <button onclick="completeSurkom('${item.id}')" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold py-1.5 rounded-lg transition active:scale-95 flex items-center justify-center space-x-1">
+            <i class="fa-solid fa-clipboard-check"></i>
+            <span>Input Hasil & Selesaikan</span>
+          </button>
+        </div>
+      `;
     }
 
+    card.innerHTML = `
+      <div class="flex items-center justify-between">
+        <span class="text-xs font-bold text-sky-600 dark:text-sky-400 font-mono">${escapeHtml(item.number)}</span>
+        <div class="flex items-center space-x-1.5">
+          <span class="text-[10px] border px-2 py-0.5 rounded font-medium ${statusBadge}">${item.status}</span>
+        </div>
+      </div>
+      <div>
+        <div class="text-xs font-semibold text-slate-900 dark:text-white">${escapeHtml(item.subject)}</div>
+        <div class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">${escapeHtml(item.description)}</div>
+      </div>
+      <div class="text-[10px] text-slate-400 pt-1 border-t border-slate-100 dark:border-slate-700/50 flex items-center justify-between">
+        <span>PIC: <b>${escapeHtml(item.picName)}</b> (${escapeHtml(item.destinationDept)})</span>
+        <span>${item.date}</span>
+      </div>
+      ${item.docUrl ? `
+        <div class="pt-0.5">
+          <a href="${item.docUrl}" target="_blank" class="text-[11px] text-sky-600 dark:text-sky-400 hover:underline inline-flex items-center space-x-1">
+            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+            <span>Buka Dokumen Digital</span>
+          </a>
+        </div>
+      ` : ""}
+      ${actionButtons}
+    `;
+    container.appendChild(card);
+  });
+}
+
+// Tambahkan Fungsi Trigger API Workflow
+async function approveSurkom(surkomId) {
+  const note = prompt("Catatan verifikasi / persetujuan (opsional):", "Disetujui");
+  if (note === null) return;
+
+  showLoading(true, "Memproses ACC...", "Memperbarui dokumen & mengirim notifikasi ke PIC...");
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "approveSurkom",
+        telegramId: currentUser.id,
+        surkomId: surkomId,
+        note: note
+      })
+    });
+    const json = await res.json();
+    showLoading(false);
+    if (json.success) {
+      alert("Surkom berhasil diverifikasi (ACC)!");
+      loadInitialData();
+    } else {
+      alert("Gagal ACC: " + json.message);
+    }
+  } catch (err) {
+    showLoading(false);
+    alert("Kendala koneksi: " + err.message);
+  }
+}
+
+async function receiveSurkom(surkomId) {
+  if (!confirm("Konfirmasi penerimaan pekerjaan Surkom ini?")) return;
+
+  showLoading(true, "Memproses...", "Mengubah status menjadi sedang dikerjakan...");
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "receiveSurkom",
+        telegramId: currentUser.id,
+        surkomId: surkomId
+      })
+    });
+    const json = await res.json();
+    showLoading(false);
+    if (json.success) {
+      alert("Tugas diterima! Status berubah menjadi IN_PROGRESS.");
+      loadInitialData();
+    } else {
+      alert("Gagal memproses: " + json.message);
+    }
+  } catch (err) {
+    showLoading(false);
+    alert("Kendala koneksi: " + err.message);
+  }
+}
+
+async function completeSurkom(surkomId) {
+  const solution = prompt("Masukkan rincian solusi / tindakan perbaikan:");
+  if (!solution) return;
+
+  showLoading(true, "Menyelesaikan Surkom...", "Menerbitkan berkas PDF arsip & mengirim notifikasi...");
+  try {
+    const res = await fetch(GAS_API_URL, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: JSON.stringify({
+        action: "completeSurkom",
+        telegramId: currentUser.id,
+        surkomId: surkomId,
+        completionNote: solution
+      })
+    });
+    const json = await res.json();
+    showLoading(false);
+    if (json.success) {
+      alert("Surkom selesai ditangani! Berkas PDF otomatis diterbitkan.");
+      loadInitialData();
+    } else {
+      alert("Gagal menyelesaikan: " + json.message);
+    }
+  } catch (err) {
+    showLoading(false);
+    alert("Kendala koneksi: " + err.message);
+  }
+}
     function switchTab(tab) {
       if (tab === "create") {
         document.getElementById("tabCreate").classList.remove("hidden");
